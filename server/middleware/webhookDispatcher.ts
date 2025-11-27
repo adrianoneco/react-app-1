@@ -2,14 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 
 export interface WebhookPayload {
   event: string;
-  method: string;
-  path: string;
-  params: Record<string, any>;
-  query: Record<string, any>;
-  body: any;
-  userId?: string;
-  isApiAuth: boolean;
-  timestamp: string;
+  [key: string]: any;
 }
 
 async function dispatchWebhook(payload: WebhookPayload): Promise<void> {
@@ -41,13 +34,28 @@ async function dispatchWebhook(payload: WebhookPayload): Promise<void> {
 }
 
 function getEventName(method: string, path: string): string {
-  const cleanPath = path
+  let cleanPath = path
     .replace(/^\/api\//, "")
-    .replace(/\/[a-f0-9-]{36}/g, "/:id")
-    .replace(/\/\d+/g, "/:id")
+    .replace(/\/[a-f0-9-]{36}/g, "")
+    .replace(/\/\d+/g, "")
+    .replace(/\/$/, "")
     .replace(/\//g, ".");
   
-  return `api.${method.toLowerCase()}.${cleanPath}`;
+  const methodMap: Record<string, string> = {
+    "GET": "",
+    "POST": "",
+    "PUT": ".update",
+    "PATCH": ".update",
+    "DELETE": ".delete",
+  };
+
+  const suffix = methodMap[method] || "";
+  
+  if (method === "POST" && !cleanPath.includes("login") && !cleanPath.includes("register") && !cleanPath.includes("logout")) {
+    return `${cleanPath}.create`;
+  }
+  
+  return `${cleanPath}${suffix}`;
 }
 
 export function webhookDispatcher(req: Request, res: Response, next: NextFunction) {
@@ -64,15 +72,14 @@ export function webhookDispatcher(req: Request, res: Response, next: NextFunctio
   const originalJson = res.json.bind(res);
   
   res.json = function(data: any) {
+    const event = getEventName(req.method, req.path);
+    
     const payload: WebhookPayload = {
-      event: getEventName(req.method, req.path),
-      method: req.method,
-      path: req.path,
-      params: req.params || {},
-      query: req.query || {},
-      body: req.body || {},
-      userId: req.session?.userId,
-      isApiAuth: req.isApiAuth || false,
+      event,
+      ...req.body,
+      ...req.query,
+      ...req.params,
+      userId: req.session?.userId || null,
       timestamp: new Date().toISOString(),
     };
 

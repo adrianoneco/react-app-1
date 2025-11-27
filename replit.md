@@ -138,33 +138,31 @@ All API requests (GET, POST, PUT, PATCH, DELETE) automatically trigger a webhook
 All webhook requests include:
 - `Authorization: Bearer <GLOBAL_API_KEY>` header
 - `X-API-Key: <GLOBAL_API_KEY>` header
-- JSON payload with `event` as first key, followed by request data and `timestamp`
+- JSON payload with `event` as first key, followed by request content and `timestamp`
 
-Example payload structure for API requests:
+Example payload structure:
 ```json
 {
-  "event": "api.post.auth.login",
-  "method": "POST",
-  "path": "/api/auth/login",
-  "params": {},
-  "query": {},
-  "body": { "email": "user@example.com" },
-  "userId": "uuid-if-authenticated",
-  "isApiAuth": false,
+  "event": "auth.login",
+  "email": "user@example.com",
+  "password": "...",
+  "userId": null,
   "timestamp": "2024-01-01T12:00:00.000Z"
 }
 ```
 
 #### Event Naming Convention
-Events follow the pattern: `api.<method>.<path>`
-- `api.get.users` - GET /api/users
-- `api.post.auth.login` - POST /api/auth/login
-- `api.patch.users.:id` - PATCH /api/users/:id
-- `api.delete.users.:id` - DELETE /api/users/:id
+- `auth.login` - POST /api/auth/login
+- `auth.register` - POST /api/auth/register
+- `auth.logout` - POST /api/auth/logout
+- `users` - GET /api/users
+- `users.create` - POST /api/users
+- `users.update` - PATCH /api/users/:id
+- `users.delete` - DELETE /api/users/:id
 
-#### Recovery Events (via webhook.ts)
-- `auth.recovery.check`: Check available recovery methods (email/whatsapp)
-- `auth.recovery.request`: Request password recovery via specific method
+#### Recovery Events
+- `auth.recovery.check`: Check available recovery methods
+- `auth.recovery.request`: Request password recovery
 
 ## Password Recovery (Dual Method)
 - **Email Recovery**: Uses SMTP configuration to send password reset emails
