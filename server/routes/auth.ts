@@ -2,7 +2,12 @@ import { Router } from "express";
 import { storage } from "../storage";
 import { insertUserSchema, loginSchema, resetPasswordSchema, newPasswordSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
-import { sendPasswordResetEmail, isEmailConfigured } from "../email";
+import { 
+  sendPasswordResetEmail, 
+  sendPasswordResetWhatsApp, 
+  isEmailConfigured, 
+  isWhatsAppConfigured 
+} from "../email";
 import { 
   hashPassword, 
   comparePassword, 
@@ -83,23 +88,34 @@ router.post("/logout", (req, res) => {
   });
 });
 
+router.get("/recovery-methods", async (req, res) => {
+  try {
+    const methods = {
+      email: isEmailConfigured(),
+      whatsapp: isWhatsAppConfigured(),
+    };
+    res.json({ methods });
+  } catch (error) {
+    console.error("Get recovery methods error:", error);
+    res.status(500).json({ error: "Erro ao buscar métodos de recuperação" });
+  }
+});
+
 router.post("/forgot-password", async (req, res) => {
   try {
     const data = resetPasswordSchema.parse(req.body);
+    const method = req.body.method || "email";
     
     const user = await storage.getUserByEmail(data.email);
     
     res.json({ 
       success: true, 
-      message: "Se o email existir, você receberá instruções de recuperação." 
+      message: method === "whatsapp" 
+        ? "Se o número estiver cadastrado, você receberá instruções via WhatsApp."
+        : "Se o email existir, você receberá instruções de recuperação." 
     });
     
     if (!user) {
-      return;
-    }
-
-    if (!isEmailConfigured()) {
-      console.warn("SMTP not configured. Password reset email not sent.");
       return;
     }
 
@@ -107,7 +123,27 @@ router.post("/forgot-password", async (req, res) => {
     const expiry = getTokenExpiry(1);
     
     await storage.setResetToken(data.email, token, expiry);
-    await sendPasswordResetEmail(data.email, token, user.name);
+
+    if (method === "whatsapp") {
+      if (!isWhatsAppConfigured()) {
+        console.warn("WhatsApp endpoint not configured. Password reset not sent.");
+        return;
+      }
+      
+      if (!user.celular) {
+        console.warn("User does not have a phone number. WhatsApp reset not sent.");
+        return;
+      }
+      
+      await sendPasswordResetWhatsApp(user.celular, token, user.name);
+    } else {
+      if (!isEmailConfigured()) {
+        console.warn("SMTP not configured. Password reset email not sent.");
+        return;
+      }
+      
+      await sendPasswordResetEmail(data.email, token, user.name);
+    }
     
   } catch (error: any) {
     if (error.name === "ZodError") {

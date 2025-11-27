@@ -5,8 +5,8 @@ const transporter = nodemailer.createTransport({
   port: parseInt(process.env.SMTP_PORT || "587"),
   secure: process.env.SMTP_SECURE === "true",
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: process.env.SMTP_USERNAME,
+    pass: process.env.SMTP_PASSWORD,
   },
 });
 
@@ -101,10 +101,59 @@ Equipe Nexus Platform
   }
 }
 
+export async function sendPasswordResetWhatsApp(
+  phone: string,
+  token: string,
+  userName: string
+): Promise<boolean> {
+  const endpoint = process.env.ACCOUNT_RECOVERY_WA_ENDPOINT;
+  
+  if (!endpoint) {
+    console.warn("WhatsApp endpoint not configured (ACCOUNT_RECOVERY_WA_ENDPOINT)");
+    return false;
+  }
+
+  const baseUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 5000}`;
+  const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+  const message = `Olá, ${userName}!\n\nRecebemos uma solicitação para redefinir a senha da sua conta.\n\nPara redefinir sua senha, acesse o link abaixo:\n${resetUrl}\n\nEste link expira em 1 hora.\n\nSe você não fez essa solicitação, pode ignorar esta mensagem.`;
+
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        phone,
+        message,
+        userName,
+        resetUrl,
+        token,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error("WhatsApp API error:", error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Failed to send password reset via WhatsApp:", error);
+    return false;
+  }
+}
+
 export function isEmailConfigured(): boolean {
   return !!(
     process.env.SMTP_HOST &&
-    process.env.SMTP_USER &&
-    process.env.SMTP_PASS
+    process.env.SMTP_USERNAME &&
+    process.env.SMTP_PASSWORD
   );
+}
+
+export function isWhatsAppConfigured(): boolean {
+  return !!process.env.ACCOUNT_RECOVERY_WA_ENDPOINT;
 }
