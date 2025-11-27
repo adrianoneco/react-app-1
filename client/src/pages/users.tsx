@@ -30,7 +30,8 @@ import {
   Loader2,
   Camera,
   X,
-  Phone
+  Phone,
+  Users
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -472,9 +473,14 @@ export default function UsersPage() {
     <Layout>
       <div className="space-y-8">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-heading font-bold text-foreground">Gerenciar Usuários</h1>
-            <p className="text-muted-foreground mt-1">Visualize, crie e gerencie os usuários do sistema.</p>
+          <div className="flex items-start gap-3">
+            <div className="p-2 bg-primary/10 rounded-lg">
+              <Users className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-heading font-bold text-foreground">Gerenciar Usuários</h1>
+              <p className="text-muted-foreground mt-1">Visualize, crie e gerencie os usuários do sistema.</p>
+            </div>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
@@ -553,11 +559,6 @@ export default function UsersPage() {
                 <div className="space-y-2">
                   <Label htmlFor="celular">Celular</Label>
                   <Input id="celular" {...form.register("celular")} placeholder="(00) 00000-0000" />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="externalId">ID Externo (opcional)</Label>
-                  <Input id="externalId" {...form.register("externalId")} placeholder="Identificador único" />
                 </div>
                 
                 <div className="space-y-2">
