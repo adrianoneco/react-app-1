@@ -73,14 +73,15 @@ export function webhookDispatcher(req: Request, res: Response, next: NextFunctio
     return next();
   }
 
-  if (!req.path.startsWith("/api/") || req.path.includes("/socket.io")) {
+  const fullPath = req.originalUrl.split('?')[0];
+  if (!fullPath.startsWith("/api/") || fullPath.includes("/socket.io")) {
     return next();
   }
 
   const originalJson = res.json.bind(res);
   
   res.json = function(data: any) {
-    const event = getEventName(req.method, req.path);
+    const event = getEventName(req.method, req.originalUrl.split('?')[0]);
     const geolocation = parseGeolocation(req);
     const cleanQuery = cleanQueryParams(req.query as Record<string, any>);
     
