@@ -31,7 +31,8 @@ import {
   Camera,
   X,
   Phone,
-  Users
+  Users,
+  UserCog
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -41,6 +42,27 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DataList, type Column, type DataListAction, type FilterOption } from "@/components/ui/data-list";
+import { type LucideIcon } from "lucide-react";
+
+interface PageHeaderProps {
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+}
+
+export function PageHeader({ icon: Icon, title, subtitle }: PageHeaderProps) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="p-2 bg-primary/10 rounded-lg flex items-center justify-center">
+        <Icon className="h-7 w-7 text-primary" />
+      </div>
+      <div className="flex flex-col justify-center">
+        <h1 className="text-3xl font-heading font-bold text-foreground">{title}</h1>
+        <p className="text-muted-foreground mt-1">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
 
 interface User {
   id: string;
@@ -473,15 +495,11 @@ export default function UsersPage() {
     <Layout>
       <div className="space-y-8">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Users className="h-7 w-7 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-heading font-bold text-foreground">Gerenciar Usuários</h1>
-              <p className="text-muted-foreground mt-1">Visualize, crie e gerencie os usuários do sistema.</p>
-            </div>
-          </div>
+          <PageHeader 
+            icon={Users}
+            title="Gerenciar Usuários"
+            subtitle="Visualize, crie e gerencie os usuários do sistema."
+          />
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) setEditingUser(null);
@@ -494,10 +512,17 @@ export default function UsersPage() {
             </DialogTrigger>
             <DialogContent className="max-w-md">
               <DialogHeader>
-                <DialogTitle>{editingUser ? "Editar Usuário" : "Criar Novo Usuário"}</DialogTitle>
-                <DialogDescription>
-                  Preencha os dados abaixo para {editingUser ? "atualizar" : "cadastrar"} o usuário.
-                </DialogDescription>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <UserCog className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex flex-col justify-center">
+                    <DialogTitle>{editingUser ? "Editar Usuário" : "Criar Novo Usuário"}</DialogTitle>
+                    <DialogDescription>
+                      Preencha os dados abaixo para {editingUser ? "atualizar" : "cadastrar"} o usuário.
+                    </DialogDescription>
+                  </div>
+                </div>
               </DialogHeader>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <div className="flex justify-center">
