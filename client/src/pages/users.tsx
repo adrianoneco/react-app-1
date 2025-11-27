@@ -11,9 +11,7 @@ import {
 import { 
   Card, 
   CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription
+  CardHeader
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,7 +44,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { 
   Search, 
-  Plus, 
   MoreVertical, 
   Pencil, 
   Trash2, 
@@ -54,15 +51,17 @@ import {
   List, 
   Filter,
   Upload,
-  UserPlus
+  UserPlus,
+  Loader2
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { PasswordInput } from "@/components/ui/password-input";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
-// Mock data for users
 interface User {
   id: string;
   name: string;
@@ -70,56 +69,9 @@ interface User {
   role: "admin" | "client";
   status: "active" | "inactive";
   avatar?: string;
-  lastActive: string;
+  lastActive?: Date;
 }
 
-const initialUsers: User[] = [
-  {
-    id: "1",
-    name: "João Silva",
-    email: "joao.silva@nexus.com",
-    role: "admin",
-    status: "active",
-    avatar: "https://github.com/shadcn.png",
-    lastActive: "2 min atrás"
-  },
-  {
-    id: "2",
-    name: "Maria Costa",
-    email: "maria.costa@cliente.com",
-    role: "client",
-    status: "active",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
-    lastActive: "5 horas atrás"
-  },
-  {
-    id: "3",
-    name: "Pedro Santos",
-    email: "pedro.santos@cliente.com",
-    role: "client",
-    status: "inactive",
-    lastActive: "2 dias atrás"
-  },
-  {
-    id: "4",
-    name: "Ana Oliveira",
-    email: "ana.oliveira@nexus.com",
-    role: "admin",
-    status: "active",
-    avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop",
-    lastActive: "1 hora atrás"
-  },
-  {
-    id: "5",
-    name: "Lucas Lima",
-    email: "lucas.lima@cliente.com",
-    role: "client",
-    status: "active",
-    lastActive: "30 min atrás"
-  }
-];
-
-// Validation schema for user form
 const userSchema = z.object({
   name: z.string().min(3, "Nome deve ter no mínimo 3 caracteres"),
   email: z.string().email("Email inválido"),
@@ -128,23 +80,16 @@ const userSchema = z.object({
 });
 
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "client">("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
-  // Filtered users
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
-
-  // Form handling
   const form = useForm<z.infer<typeof userSchema>>({
     resolver: zodResolver(userSchema),
     defaultValues: {
@@ -155,6 +100,35 @@ export default function UsersPage() {
     }
   });
 
+  // Fetch users from API
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch("/api/users", {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao buscar usuários");
+      }
+
+      const data = await response.json();
+      setUsers(data.users);
+    } catch (error) {
+      console.error("Fetch users error:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível carregar os usuários.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
   // Reset form when dialog opens/closes
   useEffect(() => {
     if (isDialogOpen) {
@@ -163,7 +137,7 @@ export default function UsersPage() {
           name: editingUser.name,
           email: editingUser.email,
           role: editingUser.role,
-          password: "" // Don't show password on edit
+          password: ""
         });
       } else {
         form.reset({
@@ -176,40 +150,111 @@ export default function UsersPage() {
     }
   }, [isDialogOpen, editingUser, form]);
 
-  const onSubmit = (data: z.infer<typeof userSchema>) => {
-    if (editingUser) {
-      // Update existing user
-      setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...data } : u));
+  // Filtered users
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                         user.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === "all" || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+
+  const onSubmit = async (data: z.infer<typeof userSchema>) => {
+    setIsSubmitting(true);
+    try {
+      if (editingUser) {
+        // Update existing user
+        const updatePayload = {
+          name: data.name,
+          email: data.email,
+          role: data.role,
+        };
+
+        const response = await fetch(`/api/users/${editingUser.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(updatePayload),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Erro ao atualizar usuário");
+        }
+
+        toast({
+          title: "Usuário atualizado",
+          description: `O usuário ${data.name} foi atualizado com sucesso.`
+        });
+      } else {
+        // Create new user
+        if (!data.password) {
+          throw new Error("Senha é obrigatória para novos usuários");
+        }
+
+        const response = await fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            name: data.name,
+            email: data.email,
+            role: data.role,
+            password: data.password,
+            status: "active",
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Erro ao criar usuário");
+        }
+
+        toast({
+          title: "Usuário criado",
+          description: `O usuário ${data.name} foi criado com sucesso.`
+        });
+      }
+
+      setIsDialogOpen(false);
+      setEditingUser(null);
+      fetchUsers(); // Refresh list
+    } catch (error: any) {
       toast({
-        title: "Usuário atualizado",
-        description: `O usuário ${data.name} foi atualizado com sucesso.`
+        variant: "destructive",
+        title: "Erro",
+        description: error.message,
       });
-    } else {
-      // Create new user
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        status: "active",
-        lastActive: "Agora"
-      };
-      setUsers([...users, newUser]);
-      toast({
-        title: "Usuário criado",
-        description: `O usuário ${data.name} foi criado com sucesso.`
-      });
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsDialogOpen(false);
-    setEditingUser(null);
   };
 
-  const handleDelete = (userId: string) => {
-    if (confirm("Tem certeza que deseja excluir este usuário?")) {
-      setUsers(users.filter(u => u.id !== userId));
+  const handleDelete = async (userId: string) => {
+    if (!confirm("Tem certeza que deseja excluir este usuário?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Erro ao excluir usuário");
+      }
+
       toast({
         title: "Usuário excluído",
         description: "O usuário foi removido do sistema."
+      });
+
+      fetchUsers(); // Refresh list
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível excluir o usuário.",
       });
     }
   };
@@ -219,21 +264,24 @@ export default function UsersPage() {
     setIsDialogOpen(true);
   };
 
-  // Mock image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Create a fake local URL for the uploaded image
-      const imageUrl = URL.createObjectURL(file);
-      // In a real app, we would upload this to server/S3
-      // For this mock, we just need to update the user avatar if we are editing
-      // Or store it temporarily for new user creation (simplified here)
-      toast({
-        title: "Foto carregada",
-        description: "A foto de perfil foi atualizada (simulação)."
-      });
+  const formatLastActive = (date?: Date) => {
+    if (!date) return "Nunca";
+    try {
+      return formatDistanceToNow(new Date(date), { addSuffix: true, locale: ptBR });
+    } catch {
+      return "Recentemente";
     }
   };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -261,27 +309,6 @@ export default function UsersPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="flex justify-center mb-4">
-                  <div className="relative group cursor-pointer">
-                    <Avatar className="w-24 h-24 border-4 border-secondary">
-                      <AvatarImage src={editingUser?.avatar} />
-                      <AvatarFallback className="text-2xl bg-secondary">{editingUser?.name?.charAt(0) || "U"}</AvatarFallback>
-                    </Avatar>
-                    <div className="absolute inset-0 bg-black/60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Label htmlFor="avatar-upload" className="cursor-pointer">
-                        <Upload className="w-6 h-6 text-white" />
-                      </Label>
-                      <Input 
-                        id="avatar-upload" 
-                        type="file" 
-                        accept="image/*" 
-                        className="hidden" 
-                        onChange={handleImageUpload}
-                      />
-                    </div>
-                  </div>
-                </div>
-                
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome</Label>
                   <Input id="name" {...form.register("name")} placeholder="Nome completo" />
@@ -318,7 +345,9 @@ export default function UsersPage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="password">Senha {editingUser && "(deixe em branco para manter)"}</Label>
+                  <Label htmlFor="password">
+                    Senha {editingUser && "(deixe em branco para manter)"}
+                  </Label>
                   <PasswordInput 
                     id="password" 
                     {...form.register("password")} 
@@ -330,8 +359,12 @@ export default function UsersPage() {
                 </div>
                 
                 <DialogFooter>
-                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-                    {editingUser ? "Salvar Alterações" : "Criar Usuário"}
+                  <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      editingUser ? "Salvar Alterações" : "Criar Usuário"
+                    )}
                   </Button>
                 </DialogFooter>
               </form>
@@ -441,7 +474,7 @@ export default function UsersPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-muted-foreground text-sm">
-                            {user.lastActive}
+                            {formatLastActive(user.lastActive)}
                           </TableCell>
                           <TableCell className="text-right">
                             <DropdownMenu>

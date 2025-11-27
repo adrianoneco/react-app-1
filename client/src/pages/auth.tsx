@@ -13,7 +13,6 @@ import logoImage from "@assets/generated_images/abstract_tech_logo_with_blue_and
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
-// Schemas
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
   password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
@@ -40,7 +39,6 @@ export default function AuthPage() {
   const { login, register, isLoading } = useAuth();
   const { toast } = useToast();
 
-  // Forms
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
   });
@@ -53,43 +51,40 @@ export default function AuthPage() {
     resolver: zodResolver(recoverySchema),
   });
 
-  // Handlers
   const onLogin = async (data: z.infer<typeof loginSchema>) => {
     try {
-      await login(data.email);
+      await login(data.email, data.password);
       toast({
         title: "Login realizado com sucesso",
         description: "Bem-vindo de volta!",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Erro ao entrar",
-        description: "Verifique suas credenciais e tente novamente.",
+        description: error.message || "Verifique suas credenciais e tente novamente.",
       });
     }
   };
 
   const onRegister = async (data: z.infer<typeof registerSchema>) => {
     try {
-      await register(data.email, data.name);
+      await register(data.email, data.name, data.password);
       toast({
         title: "Conta criada com sucesso",
         description: "Sua conta foi criada e você já está logado.",
       });
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Erro ao cadastrar",
-        description: "Não foi possível criar sua conta.",
+        description: error.message || "Não foi possível criar sua conta.",
       });
     }
   };
 
   const onRecovery = async (data: z.infer<typeof recoverySchema>) => {
-    // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 1500));
-    console.log("Recovery data:", data);
     toast({
       title: "Email enviado",
       description: "Verifique sua caixa de entrada para redefinir a senha.",
@@ -99,7 +94,6 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-background p-4">
-      {/* Background Ambience */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[20%] right-[20%] w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px] animate-pulse duration-3000" />
         <div className="absolute bottom-[10%] left-[10%] w-[500px] h-[500px] rounded-full bg-purple-600/10 blur-[100px]" />

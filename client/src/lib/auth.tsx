@@ -1,25 +1,23 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useLocation } from "wouter";
 
-// Mock user type
 interface User {
   id: string;
   name: string;
   email: string;
+  role: "admin" | "client";
   avatar?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, name: string) => Promise<void>;
-  register: (email: string, name: string) => Promise<void>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, name: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-const MOCK_USER_KEY = "nexus_app_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -27,45 +25,94 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    // Check for persisted user on mount
-    const storedUser = localStorage.getItem(MOCK_USER_KEY);
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        localStorage.removeItem(MOCK_USER_KEY);
-      }
-    }
-    setIsLoading(false);
+    // Check if user is logged in on mount
+    checkAuth();
   }, []);
 
-  const login = async (email: string, name: string = "Usuário Demo") => {
+  const checkAuth = async () => {
+    try {
+      const response = await fetch("/api/auth/me", {
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setUser(data.user);
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
     setIsLoading(true);
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newUser = {
-      id: "1",
-      name: name,
-      email: email,
-      avatar: "https://github.com/shadcn.png"
-    };
-    
-    setUser(newUser);
-    localStorage.setItem(MOCK_USER_KEY, JSON.stringify(newUser));
-    setIsLoading(false);
-    setLocation("/");
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao fazer login");
+      }
+
+      setUser(data.user);
+      setLocation("/");
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const register = async (email: string, name: string) => {
-    // For this mockup, register is same as login
-    await login(email, name);
+  const register = async (email: string, name: string, password: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ 
+          email, 
+          name, 
+          password,
+          role: "client",
+          status: "active"
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao cadastrar");
+      }
+
+      setUser(data.user);
+      setLocation("/");
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem(MOCK_USER_KEY);
-    setLocation("/auth");
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      setUser(null);
+      setLocation("/auth");
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -103,7 +150,7 @@ export function ProtectedRoute({ component: Component, ...rest }: any) {
   }
 
   if (!user) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   return <Component {...rest} />;
