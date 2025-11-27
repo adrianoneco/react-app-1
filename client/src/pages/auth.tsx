@@ -84,12 +84,31 @@ export default function AuthPage() {
   };
 
   const onRecovery = async (data: z.infer<typeof recoverySchema>) => {
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    toast({
-      title: "Email enviado",
-      description: "Verifique sua caixa de entrada para redefinir a senha.",
-    });
-    setMode("login");
+    try {
+      const response = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Erro ao processar solicitação");
+      }
+
+      toast({
+        title: "Email enviado",
+        description: "Se o email existir, você receberá instruções de recuperação.",
+      });
+      setMode("login");
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível processar a solicitação.",
+      });
+    }
   };
 
   return (

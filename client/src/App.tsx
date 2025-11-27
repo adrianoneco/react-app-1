@@ -7,6 +7,7 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth";
 import Dashboard from "@/pages/home";
 import UsersPage from "@/pages/users";
+import ResetPasswordPage from "@/pages/reset-password";
 import { AuthProvider, ProtectedRoute, useAuth } from "@/lib/auth";
 
 function Router() {
@@ -25,6 +26,9 @@ function Router() {
       {/* Public Routes */}
       <Route path="/auth">
         {user ? <Redirect to="/" /> : <AuthPage />}
+      </Route>
+      <Route path="/reset-password">
+        <ResetPasswordPage />
       </Route>
       
       {/* Protected Routes */}

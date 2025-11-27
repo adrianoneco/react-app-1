@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, and, or, isNull } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pkg from "pg";
 const { Pool } = pkg;
@@ -16,6 +16,15 @@ export interface IStorage {
   updateUser(id: string, data: UpdateUser): Promise<SelectUser | undefined>;
   deleteUser(id: string): Promise<boolean>;
   updateLastActive(id: string): Promise<void>;
+  
+  // Password Reset
+  setResetToken(email: string, token: string, expiry: Date): Promise<boolean>;
+  getUserByResetToken(token: string): Promise<User | undefined>;
+  clearResetToken(userId: string): Promise<void>;
+  updatePassword(userId: string, hashedPassword: string): Promise<void>;
+  
+  // External ID validation
+  isExternalIdUnique(externalId: string, excludeUserId?: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -29,10 +38,10 @@ export class DatabaseStorage implements IStorage {
     this.db = drizzle(pool, { schema });
   }
 
-  // Helper to exclude password from results
+  // Helper to exclude sensitive fields from results
   private excludePassword(user: User): SelectUser {
-    const { password, ...userWithoutPassword } = user;
-    return userWithoutPassword;
+    const { password, resetToken, resetTokenExpiry, ...userWithoutSensitive } = user;
+    return userWithoutSensitive;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -98,6 +107,64 @@ export class DatabaseStorage implements IStorage {
       .update(schema.users)
       .set({ lastActive: new Date() })
       .where(eq(schema.users.id, id));
+  }
+
+  async setResetToken(email: string, token: string, expiry: Date): Promise<boolean> {
+    const result = await this.db
+      .update(schema.users)
+      .set({ resetToken: token, resetTokenExpiry: expiry })
+      .where(eq(schema.users.email, email))
+      .returning();
+    
+    return result.length > 0;
+  }
+
+  async getUserByResetToken(token: string): Promise<User | undefined> {
+    const result = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.resetToken, token))
+      .limit(1);
+    
+    return result[0];
+  }
+
+  async clearResetToken(userId: string): Promise<void> {
+    await this.db
+      .update(schema.users)
+      .set({ resetToken: null, resetTokenExpiry: null })
+      .where(eq(schema.users.id, userId));
+  }
+
+  async updatePassword(userId: string, hashedPassword: string): Promise<void> {
+    await this.db
+      .update(schema.users)
+      .set({ password: hashedPassword })
+      .where(eq(schema.users.id, userId));
+  }
+
+  async isExternalIdUnique(externalId: string, excludeUserId?: string): Promise<boolean> {
+    if (!externalId || externalId.trim() === '') {
+      return true;
+    }
+    
+    const conditions = [eq(schema.users.externalId, externalId)];
+    
+    const result = await this.db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.externalId, externalId))
+      .limit(1);
+    
+    if (result.length === 0) {
+      return true;
+    }
+    
+    if (excludeUserId && result[0].id === excludeUserId) {
+      return true;
+    }
+    
+    return false;
   }
 }
 
