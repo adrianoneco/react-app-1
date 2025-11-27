@@ -111,19 +111,20 @@ export default function AuthPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md relative z-10"
       >
-        <div className="text-center mb-8">
-          <img 
-            src={logoImage} 
-            alt="Logo" 
-            className="w-16 h-16 mx-auto mb-4 rounded-2xl shadow-2xl shadow-primary/30"
-          />
-          <h1 className="text-3xl font-heading font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60">
-            Nexus Platform
-          </h1>
-          <p className="text-muted-foreground mt-2">O futuro da gestão integrada</p>
-        </div>
-
         <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
+          <div className="p-6 pb-0 flex items-center gap-4 border-b border-border/10 bg-card/30">
+            <img 
+              src={logoImage} 
+              alt="Logo" 
+              className="w-12 h-12 rounded-xl shadow-lg shadow-primary/20"
+            />
+            <div className="flex flex-col">
+              <h1 className="text-xl font-heading font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 leading-none">
+                Nexus Platform
+              </h1>
+              <p className="text-xs text-muted-foreground mt-1">O futuro da gestão integrada</p>
+            </div>
+          </div>
           <AnimatePresence mode="wait">
             {mode === "login" && (
               <motion.div
