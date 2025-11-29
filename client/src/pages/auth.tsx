@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +13,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import logoImage from "@assets/generated_images/abstract_tech_logo_with_blue_and_purple_gradients.png";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { useLocation } from "wouter";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido"),
@@ -41,8 +43,12 @@ interface RecoveryMethods {
   whatsapp: boolean;
 }
 
-export default function AuthPage() {
-  const [mode, setMode] = useState<AuthMode>("login");
+interface AuthPageProps {
+  mode?: AuthMode;
+}
+
+export default function AuthPage({ mode: initialMode = "login" }: AuthPageProps) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [recoveryStep, setRecoveryStep] = useState<RecoveryStep>("email");
   const [recoveryMethods, setRecoveryMethods] = useState<RecoveryMethods | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<"email" | "whatsapp">("email");
@@ -51,6 +57,7 @@ export default function AuthPage() {
   const [isSendingRecovery, setIsSendingRecovery] = useState(false);
   const { login, register, isLoading } = useAuth();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const loginForm = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -63,6 +70,10 @@ export default function AuthPage() {
   const recoveryForm = useForm<z.infer<typeof recoverySchema>>({
     resolver: zodResolver(recoverySchema),
   });
+
+  useEffect(() => {
+    setMode(initialMode);
+  }, [initialMode]);
 
   const resetRecoveryState = () => {
     setRecoveryStep("email");
@@ -90,7 +101,13 @@ export default function AuthPage() {
 
   const onRegister = async (data: z.infer<typeof registerSchema>) => {
     try {
-      await register(data.email, data.name, data.password);
+      // Transform name to proper case and email to lowercase before sending
+      const formattedName = data.name.toLowerCase().split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
+      const formattedEmail = data.email.toLowerCase();
+      
+      await register(formattedEmail, formattedName, data.password);
       toast({
         title: "Conta criada com sucesso",
         description: "Sua conta foi criada e você já está logado.",
@@ -194,6 +211,9 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-background p-4">
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[20%] right-[20%] w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px] animate-pulse duration-3000" />
         <div className="absolute bottom-[10%] left-[10%] w-[500px] h-[500px] rounded-full bg-purple-600/10 blur-[100px]" />
@@ -205,15 +225,15 @@ export default function AuthPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md relative z-10"
       >
-        <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
-          <div className="p-6 pb-4 flex flex-col items-center gap-2 border-b border-border/10 bg-card/30 text-center">
+        <Card className="border-border/50 bg-card/90 backdrop-blur-xl shadow-2xl overflow-hidden">
+          <div className="p-6 pb-4 flex items-center justify-center gap-4 border-b border-border/20 bg-card">
             <img 
               src={logoImage} 
               alt="Logo" 
-              className="w-16 h-16 rounded-xl shadow-lg shadow-primary/20 mb-2"
+              className="w-16 h-16 rounded-xl shadow-lg shadow-primary/20 flex-shrink-0"
             />
-            <div className="flex flex-col items-center">
-              <h1 className="text-2xl font-heading font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 leading-none">
+            <div className="flex flex-col items-center text-center">
+              <h1 className="text-2xl font-heading font-bold text-foreground leading-none">
                 Nexus Platform
               </h1>
               <p className="text-sm text-muted-foreground mt-1">O futuro da gestão integrada</p>
@@ -228,7 +248,7 @@ export default function AuthPage() {
                 exit={{ opacity: 0, x: 20 }}
                 transition={{ duration: 0.2 }}
               >
-                <CardHeader>
+                <CardHeader className="text-center">
                   <CardTitle>Bem-vindo de volta</CardTitle>
                   <CardDescription>Entre com suas credenciais para acessar</CardDescription>
                 </CardHeader>
@@ -254,7 +274,7 @@ export default function AuthPage() {
                         <Label htmlFor="password">Senha</Label>
                         <button 
                           type="button" 
-                          onClick={() => setMode("recovery")}
+                          onClick={() => setLocation("/auth/recovery")}
                           className="text-xs text-primary hover:underline"
                         >
                           Esqueceu a senha?
@@ -280,7 +300,7 @@ export default function AuthPage() {
                     </Button>
                     <div className="text-center text-sm text-muted-foreground">
                       Não tem uma conta?{" "}
-                      <button type="button" onClick={() => setMode("register")} className="text-primary hover:underline font-medium">
+                      <button type="button" onClick={() => setLocation("/auth/register")} className="text-primary hover:underline font-medium">
                         Cadastre-se
                       </button>
                     </div>
@@ -297,7 +317,7 @@ export default function AuthPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
               >
-                <CardHeader>
+                <CardHeader className="text-center">
                   <CardTitle>Criar conta</CardTitle>
                   <CardDescription>Comece sua jornada conosco hoje</CardDescription>
                 </CardHeader>
@@ -310,7 +330,7 @@ export default function AuthPage() {
                         <Input 
                           id="name" 
                           placeholder="Seu nome" 
-                          className="pl-9 bg-secondary/50 border-border/50" 
+                          className="pl-9 bg-secondary/50 border-border/50 uppercase" 
                           {...registerForm.register("name")}
                         />
                       </div>
@@ -325,7 +345,7 @@ export default function AuthPage() {
                         <Input 
                           id="reg-email" 
                           placeholder="nome@empresa.com" 
-                          className="pl-9 bg-secondary/50 border-border/50" 
+                          className="pl-9 bg-secondary/50 border-border/50 lowercase" 
                           {...registerForm.register("email")}
                         />
                       </div>
@@ -333,35 +353,37 @@ export default function AuthPage() {
                         <p className="text-xs text-destructive">{registerForm.formState.errors.email.message}</p>
                       )}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="reg-pass">Senha</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                        <PasswordInput
-                          id="reg-pass"
-                          placeholder="••••••••"
-                          className="pl-9 bg-secondary/50 border-border/50"
-                          {...registerForm.register("password")}
-                        />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="reg-pass">Senha</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                          <PasswordInput
+                            id="reg-pass"
+                            placeholder="••••••••"
+                            className="pl-9 bg-secondary/50 border-border/50"
+                            {...registerForm.register("password")}
+                          />
+                        </div>
+                        {registerForm.formState.errors.password && (
+                          <p className="text-xs text-destructive">{registerForm.formState.errors.password.message}</p>
+                        )}
                       </div>
-                      {registerForm.formState.errors.password && (
-                        <p className="text-xs text-destructive">{registerForm.formState.errors.password.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-pass">Confirmar Senha</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
-                        <PasswordInput
-                          id="confirm-pass"
-                          placeholder="••••••••"
-                          className="pl-9 bg-secondary/50 border-border/50"
-                          {...registerForm.register("confirmPassword")}
-                        />
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-pass">Confirmar Senha</Label>
+                        <div className="relative">
+                          <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground z-10" />
+                          <PasswordInput
+                            id="confirm-pass"
+                            placeholder="••••••••"
+                            className="pl-9 bg-secondary/50 border-border/50"
+                            {...registerForm.register("confirmPassword")}
+                          />
+                        </div>
+                        {registerForm.formState.errors.confirmPassword && (
+                          <p className="text-xs text-destructive">{registerForm.formState.errors.confirmPassword.message}</p>
+                        )}
                       </div>
-                      {registerForm.formState.errors.confirmPassword && (
-                        <p className="text-xs text-destructive">{registerForm.formState.errors.confirmPassword.message}</p>
-                      )}
                     </div>
                   </CardContent>
                   <CardFooter className="flex flex-col gap-4">
@@ -370,7 +392,7 @@ export default function AuthPage() {
                     </Button>
                     <div className="text-center text-sm text-muted-foreground">
                       Já tem uma conta?{" "}
-                      <button type="button" onClick={() => setMode("login")} className="text-primary hover:underline font-medium">
+                      <button type="button" onClick={() => setLocation("/auth/login")} className="text-primary hover:underline font-medium">
                         Fazer login
                       </button>
                     </div>
@@ -396,14 +418,7 @@ export default function AuthPage() {
                       exit={{ opacity: 0, x: 20 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <CardHeader>
-                        <button 
-                          onClick={() => { setMode("login"); resetRecoveryState(); }} 
-                          className="w-fit mb-2 text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm transition-colors"
-                          data-testid="button-back-login"
-                        >
-                          <ArrowLeft className="w-4 h-4" /> Voltar
-                        </button>
+                      <CardHeader className="text-center">
                         <CardTitle>Recuperar Senha</CardTitle>
                         <CardDescription>Digite seu email para verificar as opções de recuperação</CardDescription>
                       </CardHeader>
@@ -426,7 +441,7 @@ export default function AuthPage() {
                             )}
                           </div>
                         </CardContent>
-                        <CardFooter>
+                        <CardFooter className="flex flex-col gap-4">
                           <Button 
                             type="submit" 
                             className="w-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25" 
@@ -435,6 +450,14 @@ export default function AuthPage() {
                           >
                             {isCheckingMethods ? <Loader2 className="h-4 w-4 animate-spin" /> : "Continuar"}
                           </Button>
+                          <div className="flex justify-between items-center text-sm w-full">
+                            <button type="button" onClick={() => setLocation("/auth/login")} className="text-primary hover:underline font-medium">
+                              Voltar para login
+                            </button>
+                            <button type="button" onClick={() => setLocation("/auth/register")} className="text-primary hover:underline font-medium">
+                              Criar conta
+                            </button>
+                          </div>
                         </CardFooter>
                       </form>
                     </motion.div>
@@ -448,14 +471,7 @@ export default function AuthPage() {
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <CardHeader>
-                        <button 
-                          onClick={() => setRecoveryStep("email")} 
-                          className="w-fit mb-2 text-muted-foreground hover:text-foreground flex items-center gap-1 text-sm transition-colors"
-                          data-testid="button-back-email"
-                        >
-                          <ArrowLeft className="w-4 h-4" /> Voltar
-                        </button>
+                      <CardHeader className="text-center">
                         <CardTitle>Escolha o Método</CardTitle>
                         <CardDescription>Selecione como deseja receber o link de recuperação</CardDescription>
                       </CardHeader>
@@ -554,7 +570,7 @@ export default function AuthPage() {
                       </CardHeader>
                       <CardFooter>
                         <Button 
-                          onClick={() => { setMode("login"); resetRecoveryState(); }}
+                          onClick={() => { setLocation("/auth/login"); resetRecoveryState(); }}
                           className="w-full bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25"
                           data-testid="button-back-to-login"
                         >

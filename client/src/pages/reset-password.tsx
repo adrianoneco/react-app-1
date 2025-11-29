@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import logoImage from "@assets/generated_images/abstract_tech_logo_with_blue_and_purple_gradients.png";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const resetSchema = z.object({
   password: z.string().min(6, "A senha deve ter no mínimo 6 caracteres"),
@@ -87,7 +88,7 @@ export default function ResetPasswordPage() {
       });
 
       setTimeout(() => {
-        navigate("/auth");
+        navigate("/auth/login");
       }, 3000);
     } catch (error: any) {
       toast({
@@ -102,6 +103,9 @@ export default function ResetPasswordPage() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-background p-4">
+      <div className="absolute top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
         <div className="absolute top-[20%] right-[20%] w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px] animate-pulse duration-3000" />
         <div className="absolute bottom-[10%] left-[10%] w-[500px] h-[500px] rounded-full bg-purple-600/10 blur-[100px]" />
@@ -113,15 +117,15 @@ export default function ResetPasswordPage() {
         transition={{ duration: 0.5 }}
         className="w-full max-w-md relative z-10"
       >
-        <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl shadow-black/40 overflow-hidden">
-          <div className="p-6 pb-4 flex flex-col items-center gap-2 border-b border-border/10 bg-card/30 text-center">
+        <Card className="border-border/50 bg-card/90 backdrop-blur-xl shadow-2xl overflow-hidden">
+          <div className="p-6 pb-4 flex items-center justify-center gap-4 border-b border-border/20 bg-card">
             <img 
               src={logoImage} 
               alt="Logo" 
-              className="w-16 h-16 rounded-xl shadow-lg shadow-primary/20 mb-2"
+              className="w-16 h-16 rounded-xl shadow-lg shadow-primary/20 flex-shrink-0"
             />
-            <div className="flex flex-col items-center">
-              <h1 className="text-2xl font-heading font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 leading-none">
+            <div className="flex flex-col items-center text-center">
+              <h1 className="text-2xl font-heading font-bold text-foreground leading-none">
                 Nexus Platform
               </h1>
               <p className="text-sm text-muted-foreground mt-1">O futuro da gestão integrada</p>
@@ -147,7 +151,7 @@ export default function ResetPasswordPage() {
               <CardFooter>
                 <Button 
                   className="w-full bg-primary hover:bg-primary/90"
-                  onClick={() => navigate("/auth")}
+                  onClick={() => navigate("/auth/login")}
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Voltar para Login
@@ -168,7 +172,7 @@ export default function ResetPasswordPage() {
               <CardFooter>
                 <Button 
                   className="w-full bg-primary hover:bg-primary/90"
-                  onClick={() => navigate("/auth")}
+                  onClick={() => navigate("/auth/login")}
                 >
                   Ir para Login
                 </Button>

@@ -9,8 +9,9 @@ import Dashboard from "@/pages/home";
 import UsersPage from "@/pages/users";
 import ResetPasswordPage from "@/pages/reset-password";
 import { AuthProvider, ProtectedRoute, useAuth } from "@/lib/auth";
+import { ThemeProvider } from "@/lib/theme";
 
-function Router() {
+function AppRoutes() {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
@@ -24,8 +25,17 @@ function Router() {
   return (
     <Switch>
       {/* Public Routes */}
+      <Route path="/auth/login">
+        {user ? <Redirect to="/" /> : <AuthPage mode="login" />}
+      </Route>
+      <Route path="/auth/register">
+        {user ? <Redirect to="/" /> : <AuthPage mode="register" />}
+      </Route>
+      <Route path="/auth/recovery">
+        {user ? <Redirect to="/" /> : <AuthPage mode="recovery" />}
+      </Route>
       <Route path="/auth">
-        {user ? <Redirect to="/" /> : <AuthPage />}
+        <Redirect to="/auth/login" />
       </Route>
       <Route path="/reset-password">
         <ResetPasswordPage />
@@ -44,12 +54,14 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          <Router />
-        </AuthProvider>
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <AuthProvider>
+            <Toaster />
+            <AppRoutes />
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

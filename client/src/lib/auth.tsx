@@ -74,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, name: string, password: string) => {
     setIsLoading(true);
     try {
+      console.log("Registering user:", { email, name, password: "***" });
+      
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -87,7 +89,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }),
       });
 
+      console.log("Response status:", response.status);
       const data = await response.json();
+      console.log("Response data:", data);
 
       if (!response.ok) {
         throw new Error(data.error || "Erro ao cadastrar");
@@ -96,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
       setLocation("/");
     } catch (error) {
+      console.error("Registration error:", error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -109,7 +114,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: "include",
       });
       setUser(null);
-      setLocation("/auth");
+      setLocation("/auth/login");
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -125,7 +130,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    // Return a default loading state instead of throwing immediately
+    return {
+      user: null,
+      isLoading: true,
+      login: async () => {},
+      register: async () => {},
+      logout: async () => {}
+    };
   }
   return context;
 }
@@ -137,7 +149,7 @@ export function ProtectedRoute({ component: Component, ...rest }: any) {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      setLocation("/auth");
+      setLocation("/auth/login");
     }
   }, [user, isLoading, setLocation]);
 

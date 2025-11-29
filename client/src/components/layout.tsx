@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import logoImage from "@assets/generated_images/abstract_tech_logo_with_blue_and_purple_gradients.png";
 import { useAuth } from "@/lib/auth";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -58,6 +59,8 @@ export function Layout({ children }: LayoutProps) {
               className="pl-8 bg-secondary/50 border-none focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>
+
+          <ThemeToggle />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
